@@ -1,0 +1,134 @@
+---
+title: "Untitled"
+author: "Jesus Pacheco"
+date: "July 11, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(suppressWarnings(library(tidyverse)))
+```
+
+## I.
+
+```{r}
+# Importacion de los datos
+datos <- data.frame(data.table::fread("data/WDS2014v2.csv"))
+```
+
+### I.1
+
+¿Cuál es la relación entre la tasa de fertilidad con la Esperanza de Vida al nacer en hombres?
+
+```{r}
+ggplot(datos, aes(TFR, EVH, col = ARE)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+Se aprecia una relación negativa entre la fertilidad y la esperanza de vida para hombres. En general se ve que la relación es más marcada en América.
+
+En términos descriptivos de las variables individuales además se puede ver que en Europa tienen los mayores índices de esperanza de vida, seguido por América, Asia y Oceanía. Las peores esperanzas de vida están en África.
+
+En cuanto a la fertilidad, América y Europa tienen rangos muy parecidos. En Asia hay países que muestran fertilidades más altas que en los continentes anteriores, y en África es donde hay mayores indicadores de fertilidad.
+
+### I.2
+
+Se crea la variable `EVT2` según lo descrito
+
+```{r}
+datos <- mutate(datos, EVT2 = EVT > 65)
+```
+
+Se crea el gráfico requerido:
+
+```{r}
+ggplot(filter(datos, !is.na(EVT2)), 
+       aes(ARE ,fill = EVT2)) + 
+  geom_bar() +
+  coord_flip() +
+  scale_fill_manual(name="Esperanza\nde\nvida",
+                    values = c("green4","orange3"), 
+                    labels=c("<=65", ">65")) +
+  ggtitle("Proporción de países según\nesperanza de vida\n(por región)")
+```
+
+Se puede observar que la esperanza de todos los países europeos superan el umbral establecido de 65 años. En África se ve la menor proporción de países con esperanza de vida mayor a los 65 años. En Asia y Oceanía y en América se ve que hay ciertos países que no superan el umbral establecido, pero son relativamente pocos.
+
+### III.3
+
+```{r}
+ggplot(filter(datos, !is.na(EVT2)), aes(TFR, TMI)) + 
+  geom_point(aes(col = ARE), alpha = 0.5) + 
+  facet_grid(ARE~EVT2) + 
+  coord_flip() +
+  theme(legend.position = "none")
+```
+
+### III.4
+
+```{r}
+# paises con mayos poblacion por region
+max_country <- datos %>% 
+  filter(P2014 < 50e6) %>% 
+  group_by(ARE) %>% 
+  summarise(maxp = Country.Name[which.max(TMI)])
+
+set.seed(111)
+datos %>% 
+    filter(P2014 < 50e6,
+           !is.na(TMI),
+           !is.na(P2014)) %>% 
+    mutate(P2014 = P2014/1e6,
+           labs = ifelse(Country.Name %in% max_country$maxp,
+                  Country.Name, "")) %>% 
+    ggplot(aes(ARE, TMI, size = P2014, fill = ARE)) + 
+    geom_jitter(shape = 21) + theme_bw() +
+  geom_text(aes(label = labs)) +
+  ylab("Tasa de mortalidad") +
+  xlab("Área") +
+  scale_y_continuous(breaks =  seq(0, 100, by=10)) +
+  theme(legend.position = "none")
+```
+
+### III.5
+
+```{r}
+datos %>% 
+    filter(P2014 < 50e6,
+           !is.na(TMI),
+           !is.na(P2014)) %>% 
+    mutate(P2014 = P2014/1e6,
+           labs = ifelse(Country.Name %in% max_country$maxp,
+                  Country.Name, "")) %>% 
+    ggplot(aes(ARE, TMI, size = P2014, fill = ARE)) + 
+    geom_boxplot(shape = 21) + theme_bw() +
+  ylab("Tasa de mortalidad") +
+  xlab("Área") +
+  scale_y_continuous(breaks =  seq(0, 100, by=10)) +
+  theme(legend.position = "none")
+```
+
+### III.6
+
+```{r}
+datos %>% ggplot(aes(EVM, fill = ARE)) + 
+  geom_density() +
+  scale_fill_manual(values = c("#8B4513", 
+                               "#FF3030", 
+                               "#FFC125", 
+                               "#458B00"))
+```
+
+### III.7
+
+```{r}
+datos %>% 
+  filter(grepl("euro", ARE, ignore.case = T),
+         !is.na(TMI)) %>% 
+  ggplot(aes(TMI, forcats::fct_reorder(Country.Name, TMI))) +
+  geom_point() +
+  ylab("Pais") + xlab("Tasa de mortalidad")
+```
+
